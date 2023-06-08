@@ -1,0 +1,1 @@
+# kafka-streams-leave-group-on-close
