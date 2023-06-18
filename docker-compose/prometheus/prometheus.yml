@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 2s
+  scrape_timeout: 2s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+      scheme: http
+      timeout: 10s
+      api_version: v1
+scrape_configs:
+  - job_name: prometheus
+    honor_timestamps: true
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['localhost:9090','node-exporter:9100']
+  - job_name: kstreams-stateless-logger
+    honor_timestamps: true
+    scrape_interval: 2s
+    scrape_timeout: 2s
+    metrics_path: /q/metrics/
+    scheme: http
+    static_configs:
+      - targets:
+        - 'kafka-streams-leave-group-on-close-kstreams-stateless-logger-1:8080'
+        - 'kafka-streams-leave-group-on-close-kstreams-stateless-logger-2:8080'
+        - 'kafka-streams-leave-group-on-close-kstreams-stateless-logger-3:8080'
+  - job_name: redpanda
+    scrape_interval: 2s
+    scrape_timeout: 2s
+    static_configs:
+      - targets:
+        - redpanda0:9644
+        - redpanda1:9644
+        - redpanda2:9644
+    metrics_path: /public_metrics

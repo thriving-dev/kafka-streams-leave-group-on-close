@@ -1,0 +1,211 @@
+version: '3.9'
+name: kafka-streams-leave-group-on-close
+networks:
+  kslgoc_network:
+    driver: bridge
+services:
+  redpanda0:
+    container_name: redpanda0
+    image: redpandadata/redpanda:v23.1.11
+    networks: [ kslgoc_network ]
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 0
+      - --check=false
+      - --set redpanda.auto_create_topics_enabled=false
+      - --kafka-addr INSIDE://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr INSIDE://redpanda0:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr INSIDE://0.0.0.0:28082,OUTSIDE://0.0.0.0:8082
+      - --advertise-pandaproxy-addr INSIDE://redpanda0:28082,OUTSIDE://localhost:8082
+      - --rpc-addr 0.0.0.0:33145
+      - --advertise-rpc-addr redpanda0:33145
+      - --kernel-page-cache 1
+    ports:
+      - 8081:8081
+      - 8082:8082
+      - 9092:9092
+      - 9644:9644
+    healthcheck:
+      test: rpk cluster health | grep "Healthy:\s*true" -c || exit 1
+      interval: 10s
+      retries: 2
+      start_period: 10s
+      timeout: 1s
+
+  redpanda1:
+    container_name: redpanda1
+    image: redpandadata/redpanda:v23.1.11
+    networks: [ kslgoc_network ]
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 1
+      - --seeds redpanda0:33145,redpanda2:33145
+      - --check=false
+      - --set redpanda.auto_create_topics_enabled=false
+      - --kafka-addr INSIDE://0.0.0.0:29093,OUTSIDE://0.0.0.0:9093
+      - --advertise-kafka-addr INSIDE://redpanda1:29093,OUTSIDE://localhost:9093
+      - --pandaproxy-addr INSIDE://0.0.0.0:28083,OUTSIDE://0.0.0.0:8083
+      - --advertise-pandaproxy-addr INSIDE://redpanda1:28083,OUTSIDE://localhost:8083
+      - --rpc-addr 0.0.0.0:33145
+      - --advertise-rpc-addr redpanda1:33145
+      - --kernel-page-cache 1
+    ports:
+      - 8083:8083
+      - 9093:9093
+      - 9645:9644
+    healthcheck:
+      test: rpk cluster health | grep "Healthy:\s*true" -c || exit 1
+      interval: 10s
+      retries: 2
+      start_period: 10s
+      timeout: 1s
+
+  redpanda2:
+    container_name: redpanda2
+    image: redpandadata/redpanda:v23.1.11
+    networks: [ kslgoc_network ]
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 2
+      - --seeds redpanda0:33145,redpanda1:33145
+      - --check=false
+      - --set redpanda.auto_create_topics_enabled=false
+      - --kafka-addr INSIDE://0.0.0.0:29094,OUTSIDE://0.0.0.0:9094
+      - --advertise-kafka-addr INSIDE://redpanda2:29094,OUTSIDE://localhost:9094
+      - --pandaproxy-addr INSIDE://0.0.0.0:28084,OUTSIDE://0.0.0.0:8084
+      - --advertise-pandaproxy-addr INSIDE://redpanda2:28084,OUTSIDE://localhost:8084
+      - --rpc-addr 0.0.0.0:33145
+      - --advertise-rpc-addr redpanda2:33145
+      - --kernel-page-cache 1
+    ports:
+      - 8084:8084
+      - 9094:9094
+      - 9646:9644
+    healthcheck:
+      test: rpk cluster health | grep "Healthy:\s*true" -c || exit 1
+      interval: 10s
+      retries: 2
+      start_period: 10s
+      timeout: 1s
+
+  redpanda-create-topics:
+    container_name: redpanda-create-topics
+    image: redpandadata/redpanda:v23.1.11
+    networks: [ kslgoc_network ]
+    depends_on:
+      redpanda0:
+        condition: service_healthy
+      redpanda1:
+        condition: service_healthy
+      redpanda2:
+        condition: service_healthy
+    entrypoint: ''
+    restart: on-failure
+    command: /bin/bash -c "rpk topic describe --brokers redpanda0:29092 random-numbers || rpk topic create --brokers redpanda0:29092 -r 3 -p 6 random-numbers"
+
+  console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/vectorized/console:v2.2.4
+    networks: [ kslgoc_network ]
+    restart: on-failure
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console"
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda0:29092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda0:8081"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redpanda0
+      - redpanda1
+      - redpanda2
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    networks: [ kslgoc_network ]
+    volumes:
+      - ./docker-compose/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    networks: [ kslgoc_network ]
+    volumes:
+      - ./docker-compose/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./docker-compose/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yaml
+      - ./docker-compose/grafana/dashboard.yml:/etc/grafana/provisioning/dashboards/main.yaml
+      - ./docker-compose/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - 3030:3000
+    links:
+      - prometheus
+
+#  node-exporter:
+#    container_name: node-exporter
+#    image: prom/node-exporter:latest
+#    networks: [ kslgoc_network ]
+#    restart: unless-stopped
+#    expose:
+#      - 9100
+
+  dummy-producer:
+    image: thriving-dev/dummy-producer:1.0.0
+    networks: [ kslgoc_network ]
+    deploy:
+      replicas: 3
+    depends_on:
+      redpanda0:
+        condition: service_healthy
+      redpanda1:
+        condition: service_healthy
+      redpanda2:
+        condition: service_healthy
+      redpanda-create-topics:
+        condition: service_completed_successfully
+    build:
+      context: dummy-producer
+      dockerfile: src/main/docker/Dockerfile.${QUARKUS_MODE:-jvm}
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda0:29092
+
+  kstreams-stateless-logger:
+    image: thriving-dev/kstreams-stateless-logger:1.0.0
+    networks: [ kslgoc_network ]
+    deploy:
+      replicas: 3
+    depends_on:
+      redpanda0:
+        condition: service_healthy
+      redpanda1:
+        condition: service_healthy
+      redpanda2:
+        condition: service_healthy
+      redpanda-create-topics:
+        condition: service_completed_successfully
+    build:
+      context: kstreams-stateless-logger
+      dockerfile: src/main/docker/Dockerfile.${QUARKUS_MODE:-jvm}
+    environment:
+      QUARKUS_KAFKA_STREAMS_BOOTSTRAP_SERVERS: redpanda0:29092
+    expose:
+      - 8080
