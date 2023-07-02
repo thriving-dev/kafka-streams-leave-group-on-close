@@ -5,6 +5,8 @@
 Application + docker-compose setup that was put together for blog post   
 https://thriving.dev/blog/reduce-rebalance-downtime-for-stateless-kafka-streams-apps
 
+Demo video: https://youtu.be/oMWjwslhuGY
+
 ## Get Started
 
 ### build Quarkus modules
@@ -52,7 +54,7 @@ Simultaneously restart ("re-create") containers `kafka-streams-leave-group-on-cl
   { docker start kafka-streams-leave-group-on-close-kstreams-stateless-logger-3 & docker start kafka-streams-leave-group-on-close-logger-leave-group-3 & }
 ```
 
-### Change config for 'kstreams-stateless-logger'
-`./kstreams-stateless-logger/src/main/resources/application.properties`
-
-... re-build the module, re-build the container, re-apply docker-compose...
+### Cleanup
+```bash
+docker-compose down
+```
