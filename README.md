@@ -37,14 +37,19 @@ A basic dashboard with panels for replicas, consumer lag, message rate should sh
 
 ### Simulation: Re-create containers
 
-Streams application logs, filtered by "REBALANCING"
+Streams application logs, filtered by "REBALANCING" (start one for each app)
 ```bash
 docker logs -f kafka-streams-leave-group-on-close-kstreams-stateless-logger-1 |grep "REBALANCING"
 ```
-
-Restart (Re-create) container `kafka-streams-leave-group-on-close-kstreams-stateless-logger-3` 
 ```bash
-docker stop kafka-streams-leave-group-on-close-kstreams-stateless-logger-3 && sleep 15 && docker start kafka-streams-leave-group-on-close-kstreams-stateless-logger-3
+docker logs -f kafka-streams-leave-group-on-close-logger-leave-group-1 |grep "REBALANCING"
+```
+
+Simultaneously restart ("re-create") containers `kafka-streams-leave-group-on-close-kstreams-stateless-logger-3` & `kafka-streams-leave-group-on-close-logger-leave-group-3` with a 15s sleep in-between.
+```bash
+{ docker stop kafka-streams-leave-group-on-close-kstreams-stateless-logger-3 & docker stop kafka-streams-leave-group-on-close-logger-leave-group-3 & } && \
+  sleep 15 && \
+  { docker start kafka-streams-leave-group-on-close-kstreams-stateless-logger-3 & docker start kafka-streams-leave-group-on-close-logger-leave-group-3 & }
 ```
 
 ### Change config for 'kstreams-stateless-logger'

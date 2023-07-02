@@ -209,3 +209,26 @@ services:
       QUARKUS_KAFKA_STREAMS_BOOTSTRAP_SERVERS: redpanda0:29092
     expose:
       - 8080
+
+  logger-leave-group:
+    image: thriving-dev/kstreams-stateless-logger:1.0.0
+    networks: [ kslgoc_network ]
+    deploy:
+      replicas: 3
+    depends_on:
+      redpanda0:
+        condition: service_healthy
+      redpanda1:
+        condition: service_healthy
+      redpanda2:
+        condition: service_healthy
+      redpanda-create-topics:
+        condition: service_completed_successfully
+    build:
+      context: kstreams-stateless-logger
+      dockerfile: src/main/docker/Dockerfile.${QUARKUS_MODE:-jvm}
+    environment:
+      QUARKUS_KAFKA_STREAMS_BOOTSTRAP_SERVERS: redpanda0:29092
+      QUARKUS_PROFILE: leavegroup
+    expose:
+      - 8080

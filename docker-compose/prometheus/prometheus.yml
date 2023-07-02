@@ -29,6 +29,9 @@ scrape_configs:
         - 'kafka-streams-leave-group-on-close-kstreams-stateless-logger-1:8080'
         - 'kafka-streams-leave-group-on-close-kstreams-stateless-logger-2:8080'
         - 'kafka-streams-leave-group-on-close-kstreams-stateless-logger-3:8080'
+        - 'kafka-streams-leave-group-on-close-logger-leave-group-1:8080'
+        - 'kafka-streams-leave-group-on-close-logger-leave-group-2:8080'
+        - 'kafka-streams-leave-group-on-close-logger-leave-group-3:8080'
   - job_name: redpanda
     scrape_interval: 2s
     scrape_timeout: 2s

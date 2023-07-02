@@ -336,6 +336,7 @@
     ],
     "time_options": [
       "1m",
+      "90s",
       "5m",
       "15m",
       "1h",
@@ -348,7 +349,7 @@
     ]
   },
   "timezone": "",
-  "title": "New dashboard",
+  "title": "Thriving.dev demo 'internal.leave.group.on.close'",
   "uid": "e28b49bc-d0e7-45ad-b846-23e4556c3b91",
   "version": 1,
   "weekStart": ""
